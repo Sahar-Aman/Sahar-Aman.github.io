@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel del Administrador</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <!-- Título del Panel -->
+    <h1>Panel del Administrador</h1>
+
+    <!-- Botones principales del administrador -->
+    <div id="adminActions">
+        <h2>Acciones</h2>
+        <button id="createEventButton" onclick="showCreateEventForm()">Crear Evento</button>
+        <button id="approveEventButton" onclick="showPendingEvents()">Aprobar/Denegrar Eventos</button>
+        <button id="editEventsButton" onclick="showEditEvents()">Editar Eventos</button>
+        <button id="deleteEventsButton" onclick="deleteEvents()">Eliminar Eventos</button>
+    </div>
+
+    <!-- Formulario para crear un evento -->
+    <div id="eventFormContainer" class="hidden">
+        <h2>Crear Evento</h2>
+        <form id="eventForm" action="/eventRegister" method="POST">
+            <input type="text" id="eventTitle" name="titulo" placeholder="Título del evento" required>
+            <input type="date" id="eventDate" name="fecha" required>
+            <input type="time" id="eventStartTime" name="hora_inicio" required>
+            <input type="time" id="eventEndTime" name="hora_fin" required>
+            <input type="text" id="eventLocation" name="ubicacion" placeholder="Ubicación" required>
+            <input type="text" id="eventOrganizer" name="organizador" placeholder="Organizador" required>
+            <textarea id="eventDescription" name="descripcion" placeholder="Descripción" required></textarea>
+            <select id="eventCategory" name="categoria">
+                <option value="Estudiantes">Evento para Estudiantes</option>
+                <option value="Profesores">Evento para Profesores</option>
+                <option value="Universidad">Evento para Comunidad Universitaria</option>
+            </select>
+            <button type="submit">Crear Evento</button>
+        </form>
+    </div>
+
+    <!-- Lista de eventos para editar -->
+    <div id="editEventsContainer" class="hidden">
+        <h2>Editar Eventos</h2>
+        <ul id="eventList">
+            <!-- Los eventos se cargarán aquí dinámicamente -->
+        </ul>
+    </div>
+
+    <!-- Lista de eventos para editar -->
+    <div id="deleteEventsContainer" class="hidden">
+        <h2>Eliminar Eventos</h2>
+        <ul id="deleteEventList">
+            <!-- Los eventos se cargarán aquí dinámicamente -->
+        </ul>
+    </div>
+
+    <!-- Formulario para editar evento -->
+    <div id="editEventFormContainer" class="hidden">
+        <h2>Editar Evento</h2>
+        <form id="editEventForm" action="/updateEvent" method="POST">
+            <input type="hidden" name="id_evento" id="editEventId">
+            <input type="text" name="titulo" id="editEventTitle" required>
+            <input type="date" name="fecha" id="editEventDate" required>
+            <input type="time" name="hora_inicio" id="editEventStartTime" required>
+            <input type="time" name="hora_fin" id="editEventEndTime" required>
+            <input type="text" name="ubicacion" id="editEventLocation" required>
+            <input type="text" name="organizador" id="editEventOrganizer" required>
+            <textarea name="descripcion" id="editEventDescription" required></textarea>
+            <select name="categoria" id="editEventCategory">
+                <option value="Estudiantes">Evento para Estudiantes</option>
+                <option value="Profesores">Evento para Profesores</option>
+                <option value="Universidad">Evento para Comunidad Universitaria</option>
+            </select>
+            <button type="submit">Guardar Cambios</button>
+        </form>
+    </div>
+
+    <!-- Contenedor de eventos pendientes -->
+    <div id="pendingEventsContainer" class="hidden">
+        <h2>Eventos Pendientes</h2>
+        <ul id="pendingEventsList">
+            <!-- Los eventos pendientes se cargarán aquí -->
+        </ul>
+    </div>
+    <br>
+    <button onclick="window.history.back()">Volver</button>
+
+    <script>
+        function showCreateEventForm() {
+            document.getElementById('eventFormContainer').classList.remove('hidden');
+            document.getElementById('editEventsContainer').classList.add('hidden');
+            document.getElementById('pendingEventsContainer').classList.add('hidden'); 
+        }
+
+        function showPendingEvents() {
+            const pendingEventsContainer = document.getElementById('pendingEventsContainer');
+            pendingEventsContainer.classList.remove('hidden');
+            document.getElementById('eventFormContainer').classList.add('hidden');
+            document.getElementById('editEventsContainer').classList.add('hidden');
+
+            fetch('/pendingEvents')
+                .then(response => response.json())
+                .then(events => {
+                    const pendingEventsList = document.getElementById('pendingEventsList');
+                    pendingEventsList.innerHTML = '';
+
+                    if (events.length === 0) {
+                        pendingEventsList.innerHTML = '<p>No hay eventos pendientes.</p>';
+                        return;
+                    }
+
+                    events.forEach(event => {
+                        const listItem = document.createElement('li');
+                        listItem.id = `event-${event.ID_EVENTO}`;
+                        listItem.innerHTML = `
+                            <strong>${event.Nombre}</strong> - ${event.Fecha} ${event.Hora_Inicio} a ${event.Hora_Fin}
+                            <button onclick="updateEventStatus(${event.ID_EVENTO}, 'Aceptado')">Aprobar</button>
+                            <button onclick="updateEventStatus(${event.ID_EVENTO}, 'Denegado')">Denegar</button>
+                        `;
+                        pendingEventsList.appendChild(listItem);
+                    });
+                })
+                .catch(error => console.error('Error al cargar los eventos pendientes:', error));
+        }
+
+        function showEditEvents() {
+            document.getElementById('editEventsContainer').classList.remove('hidden');
+            document.getElementById('eventFormContainer').classList.add('hidden');
+            document.getElementById('pendingEventsContainer').classList.add('hidden');
+
+            fetch('/getAllEvents')
+                .then(response => response.json())
+                .then(events => {
+                    const eventList = document.getElementById('eventList');
+                    eventList.innerHTML = '';
+                    if (events.length === 0) {
+                        eventList.innerHTML = '<li>No hay eventos registrados.</li>';
+                        return;
+                    }
+
+                    events.forEach(event => {
+                        const listItem = document.createElement('li');
+                        listItem.innerHTML = `
+                            <strong>${event.Nombre}</strong> - ${event.Fecha} ${event.Hora_Inicio} a ${event.Hora_Fin} - ${event.Categoria}
+                            <button onclick="editEvent(${event.ID_EVENTO}, '${event.Nombre}', '${event.Descripcion}', '${event.Fecha}', '${event.Hora_Inicio}', '${event.Hora_Fin}', '${event.Ubicacion}', '${event.Organizador}', '${event.Categoria}')">Editar</button>
+                        `;
+                        eventList.appendChild(listItem);
+                    });
+                })
+                .catch(error => console.error('Error al cargar los eventos:', error));
+        }
+
+        function editEvent(id, title, description, date, startTime, endTime, location, organizer, category) {
+            document.getElementById('editEventsContainer').classList.add('hidden');
+            document.getElementById('editEventFormContainer').classList.remove('hidden');
+
+            const formattedDate = new Date(date).toISOString().split('T')[0];
+
+            document.getElementById('editEventId').value = id;
+            document.getElementById('editEventTitle').value = title;
+            document.getElementById('editEventDate').value = formattedDate;
+            document.getElementById('editEventStartTime').value = startTime;
+            document.getElementById('editEventEndTime').value = endTime;
+            document.getElementById('editEventLocation').value = location;
+            document.getElementById('editEventOrganizer').value = organizer;
+            document.getElementById('editEventDescription').value = description;
+            document.getElementById('editEventCategory').value = category;
+        }
+
+        function updateEventStatus(eventId, newStatus) {
+            const data = { id_evento: eventId, nuevo_estado: newStatus };
+
+            fetch('/updateEventStatus', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert(`Evento ${newStatus.toLowerCase()} con éxito.`);
+                        const eventListItem = document.querySelector(`#event-${result.id_evento}`);
+                        if (eventListItem) {
+                            eventListItem.remove();
+                        }
+                    } else {
+                        alert('No se pudo actualizar el evento.');
+                    }
+                })
+                .catch(error => alert('Error al intentar actualizar el evento.'));
+        }
+
+        function deleteEvents() {
+            document.getElementById('deleteEventsContainer').classList.remove('hidden');
+            document.getElementById('eventFormContainer').classList.add('hidden');
+            document.getElementById('pendingEventsContainer').classList.add('hidden');
+            document.getElementById('editEventsContainer').classList.add('hidden');
+
+            fetch('/getAllEvents')
+                .then(response => response.json())
+                .then(events => {
+                    const eventList = document.getElementById('deleteEventList');
+                    eventList.innerHTML = '';
+                    if (events.length === 0) {
+                        eventList.innerHTML = '<li>No hay eventos registrados.</li>';
+                        return;
+                    }
+
+                    events.forEach(event => {
+                        const listItem = document.createElement('li');
+                        listItem.id = `event-${event.ID_EVENTO}`;
+                        listItem.innerHTML = `
+                            <strong>${event.Nombre}</strong> - ${event.Fecha} ${event.Hora_Inicio} a ${event.Hora_Fin} - ${event.Categoria}
+                            <button onclick="deleteEvent(${event.ID_EVENTO})">Eliminar</button>
+                        `;
+                        eventList.appendChild(listItem);
+                    });
+                })
+                .catch(error => console.error('Error al cargar los eventos:', error));
+        }
+
+        function deleteEvent(eventId) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este evento?')) return;
+
+            fetch(`/deleteEvent?id_evento=${eventId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert(result.message);
+                        const eventListItem = document.querySelector(`#event-${eventId}`);
+                        if (eventListItem) {
+                            eventListItem.remove();
+                        }
+                    } else {
+                        alert('Error al eliminar el evento.');
+                    }
+                })
+                .catch(error => alert('Error al intentar eliminar el evento.'));
+        }
+    </script>
+</body>
+</html>

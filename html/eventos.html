@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventos Aceptados</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        /* Agregar estilos para las categorías */
+        .category-estudiantes {
+            color: red; /* Rojo para estudiantes */
+        }
+        .category-profesores {
+            color: blue; /* Azul para profesores */
+        }
+        .category-comunidad {
+            color: green; /* Verde para comunidad universitaria */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Eventos</h1>
+        <div>
+            <button onclick="fetchEvents()">Todos</button>
+            <button onclick="filterEvents('Estudiantes')">Estudiantes</button>
+            <button onclick="filterEvents('Profesores')">Profesores</button>
+            <button onclick="filterEvents('Universidad')">Comunidad Universitaria</button>
+        </div>
+
+        <br>
+
+        <div>
+            <button onclick="filterByDate('dia')">Hoy</button>
+            <button onclick="filterByDate('semana')">Esta Semana</button>
+            <button onclick="filterByDate('mes')">Este Mes</button>
+        </div>
+        
+        <ul id="eventList">
+            <!-- Los eventos se agregarán dinámicamente aquí -->
+        </ul>
+        <button onclick="window.history.back()">Volver</button>
+    </div>
+    <script>
+
+        // Función para obtener los eventos desde el servidor
+        function fetchEvents(category = null) {
+    // Construir el endpoint con la categoría si es necesario
+    const endpoint = category ? `/events?category=${category}` : '/events';
+
+    fetch(endpoint)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al obtener eventos');
+            }
+            return response.json(); // Convertir la respuesta a JSON
+        })
+        .then(events => {
+            renderEvents(events); // Llamar a la función para renderizar eventos
+        })
+        .catch(error => {
+            console.error('Error al cargar los eventos:', error);
+            alert('No se pudieron cargar los eventos.');
+        });
+}
+
+
+
+        function filterEvents(category) {
+            fetchEvents(category);
+        }
+
+        // Llama a fetchEvents al cargar la página
+        fetchEvents();
+
+        // Función para mostrar los eventos en la lista
+        function renderEvents(events) {
+    const eventList = document.getElementById('eventList');
+    eventList.innerHTML = ''; // Limpia la lista antes de agregar los nuevos eventos
+
+    if (events.length === 0) {
+        const noEventsItem = document.createElement('li');
+        noEventsItem.textContent = 'No hay eventos disponibles.';
+        eventList.appendChild(noEventsItem);
+        return;
+    }
+
+    events.forEach(event => {
+        const listItem = document.createElement('li');
+
+        let categoryClass = '';
+        if (event.Categoria === 'Estudiantes') {
+            categoryClass = 'category-estudiantes';
+        } else if (event.Categoria === 'Profesores') {
+            categoryClass = 'category-profesores';
+        } else if (event.Categoria === 'Universidad') {
+            categoryClass = 'category-comunidad';
+        }
+
+        listItem.className = categoryClass;
+        listItem.innerHTML = `
+            <h3>${event.Nombre}</h3>
+            <p>${event.Descripcion}</p>
+            <p><strong>Fecha:</strong> ${event.Fecha} <strong>Hora inicio:</strong> ${event.Hora_Inicio} <strong>Hora fin:</strong> ${event.Hora_Fin}</p>
+            <p><strong>Categoría:</strong> ${event.Categoria}</p>
+            <p><strong>Ubicación:</strong> ${event.Ubicacion}</p>
+            <p><strong>Organizador:</strong> ${event.Organizador}</p>
+        `;
+        eventList.appendChild(listItem);
+    });
+}
+
+        function filterByDate(filter) {
+    fetch(`/eventsByDate?filter=${filter}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al obtener eventos filtrados por fecha');
+            }
+            return response.json();
+        })
+        .then(events => {
+            renderEvents(events);
+        })
+        .catch(error => {
+            console.error('Error al filtrar eventos por fecha:', error);
+            alert('No se pudieron cargar los eventos filtrados.');
+        });
+}
+
+
+
+
+
+        // Llama a la función para cargar los eventos al cargar la página
+        fetchEvents();
+    </script>
+</body>
+</html>
